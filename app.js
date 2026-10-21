@@ -13,6 +13,7 @@ import {itemDisplayName} from './item-name.js';
 import {selectAffix,affixSelectionValid,slotItems,selectSlotItem} from './item-selection.js';
 import {STAT_OVERRIDE_FIELDS,STAT_OVERRIDE_PATHS} from './combat/stat-overrides.js';
 import {openBuildStorage} from './build-storage.js';
+import {createUuid} from './uuid.js';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>v===null||!Number.isFinite(v)?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(v);
@@ -276,7 +277,7 @@ function renderSurvivalSnapshot(){renderSurvival(build,catalog,detailView);}
 for(const id of ['#incoming-damage','#starting-health','#incoming-penetration'])$(id).addEventListener('change',e=>{if(!e.target.value||!e.target.checkValidity()){e.target.reportValidity();e.target.value=e.target.defaultValue;}renderScheduler.request(renderSurvivalSnapshot);});
  $('#clear-conditions').addEventListener('click',()=>{delete build.conditions;if(build.progression)build.progression.townBuffs={};build.combo??=emptyCombo();build.combo.active=false;build.combo.burstActive=false;update();});
 $('#compare-build').addEventListener('change',e=>{compareId=e.target.value;renderFocus();});
-$('#copy-build').addEventListener('click',()=>{if(library.builds.length>=100)return toast('Maximum 100 saved builds.');const copy=structuredClone(build);copy.id=crypto.randomUUID();copy.name=`${build.name.slice(0,90)} · copy`;library.builds.push(copy);const previous=build.id;chooseBuild(copy.id);compareId=previous;renderFocus();toast('Independent build copy created.');});
+$('#copy-build').addEventListener('click',()=>{if(library.builds.length>=100)return toast('Maximum 100 saved builds.');const copy=structuredClone(build);copy.id=createUuid();copy.name=`${build.name.slice(0,90)} · copy`;library.builds.push(copy);const previous=build.id;chooseBuild(copy.id);compareId=previous;renderFocus();toast('Independent build copy created.');});
 $('#new-build').addEventListener('click',()=>{if(library.builds.length>=100)return toast('Maximum 100 saved builds.');$('#new-name').value='';$('#new-class').innerHTML=catalog.classes.map(c=>option(c.id,c.name,build.classId)).join('');$('#new-dialog').showModal();});
 $('#new-form').addEventListener('submit',e=>{e.preventDefault();if(!$('#new-name').value.trim())return;const next=createBuild(catalog,$('#new-class').value);next.name=$('#new-name').value.trim();library.builds.push(next);chooseBuild(next.id);$('#new-dialog').close();});
 $('#delete-build').addEventListener('click',()=>{$('#delete-description').textContent=`“${build.name}” will be removed from this browser. Export it first if you want a backup.`;$('#confirm-dialog').returnValue='';$('#confirm-dialog').showModal();});
@@ -296,7 +297,7 @@ function importBuildText(text){
  let raw;try{raw=JSON.parse(text);}catch{throw Error('Not valid JSON. Use the character save picker above for .hps files.');}
  if(raw?.version===1)throw Error('Version 1 sandbox files contain custom abilities and fictional slots. They cannot be applied to the game-backed planner; keep the export as a backup.');
  if(raw?.version===2&&raw.gameBuildId!==catalog.buildId)throw Error('This build targets a different or unspecified game patch. Recreate it against the current catalog.');
- const imported=validatePlannerBuild(raw,catalog);imported.id=crypto.randomUUID();library.builds.push(imported);chooseBuild(imported.id);$('#import-dialog').close();toast('Build imported as a separate copy.');
+ const imported=validatePlannerBuild(raw,catalog);imported.id=createUuid();library.builds.push(imported);chooseBuild(imported.id);$('#import-dialog').close();toast('Build imported as a separate copy.');
 }
 $('#import-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('Maximum file size is 1 MB.');importBuildText(await file.text());}catch(error){$('#import-error').textContent=error.message;}finally{e.target.value='';}});
 $('#clipboard-copy').addEventListener('click',async()=>{if(!build)return;try{await navigator.clipboard.writeText(JSON.stringify(build,null,2));toast('Build copied to clipboard.');}catch{toast('Clipboard access unavailable. Use Export build to save a file instead.');}});
@@ -312,6 +313,6 @@ try{
   }catch{restored=false;restoration='Could not restore the saved library. A fresh build is shown; the stored data is untouched until you make a change.';$('#saved').textContent='Restore failed — export a backup before editing';}
   if(!library){const first=createBuild(catalog);library={builds:[first],activeId:first.id};}build=library.builds.find(b=>b.id===library.activeId);
   if(restored)persist();
- initializeCharacterImport({catalog,getBuilds:()=>library.builds,onImport:chosen=>{const copies=chosen.map(b=>({...validatePlannerBuild(b,catalog),id:crypto.randomUUID()}));if(!copies.length||library.builds.length+copies.length>100)throw Error('Maximum 100 saved builds.');library.builds.push(...copies);chooseBuild(copies[0].id);toast(`${copies.length} characters imported. Your existing builds are kept.`);}});
+  initializeCharacterImport({catalog,getBuilds:()=>library.builds,onImport:chosen=>{const copies=chosen.map(b=>({...validatePlannerBuild(b,catalog),id:createUuid()}));if(!copies.length||library.builds.length+copies.length>100)throw Error('Maximum 100 saved builds.');library.builds.push(...copies);chooseBuild(copies[0].id);toast(`${copies.length} characters imported. Your existing builds are kept.`);}});
    $('#loading').textContent=restoration||`Game data ready · Steam build ${catalog.buildId}. Estimates are partial, not a full combat simulation.`;$('#data-version').textContent=`Build ${catalog.buildId}`;$('#planner').hidden=false;renderNow();
-}catch(error){$('#loading').textContent=`Unable to load planner: ${error.message}. Serve the project using mise run dev.`;}
+}catch(error){$('#loading').textContent=`Unable to load planner: ${error.message}. Check the deployment configuration and browser console.`;}

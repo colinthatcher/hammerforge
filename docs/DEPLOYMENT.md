@@ -41,6 +41,8 @@ Stop the deployment with `docker compose down`.
 
 ## Hosted behavior and access
 
+The planner supports plain HTTP on a trusted LAN. Browser APIs such as `crypto.randomUUID()` are restricted to secure contexts (HTTPS or localhost), so the planner falls back to `crypto.getRandomValues()` for build and equipment IDs. If an older image shows `crypto.randomUUID is not a function`, pull the updated source, rebuild/redeploy the image, and refresh the page. Restarting an old container alone will not apply the fix. HTTPS through a reverse proxy is also a workaround for the older image; running the development server is not required.
+
 The import dialog's file and folder pickers work on a hosted copy: select `.hps` files or a saves folder from the device using the browser. The **Find Steam characters on this PC** automatic discovery button does not work on the hosted deployment; it depends on the local-only API provided by `mise run dev`, which is intentionally not included in this container. Saves are read locally by the browser and are not uploaded. Planner builds and settings use browser-local storage, so they are local to that browser/device and are not shared or backed up by the server. Use the app's export/import feature to move builds.
 
 For public or untrusted networks, place the service behind a reverse proxy that provides HTTPS and appropriate access controls. Do not expose the plain HTTP port directly to the public internet when HTTPS is required; configure TLS termination and proxying at the edge.

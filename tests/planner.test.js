@@ -2,12 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import catalog from '../data/game-data.json' with {type:'json'};
 import {TARGET,createBuild,createGear,equipGear,compatibleAffixes,availableSkills,collectStats,calculateAbility,validatePlannerBuild} from '../planner-model.js';
+import {createUuid} from '../uuid.js';
 const missiles='players/wizard/skills/wiz_magic_missiles.sval';
 const fireball='players/wizard/skills/wiz_fireball.sval';
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
 function state(build,path,rank=1,upgrades={}){build.skills[path]={rank,upgrades};}
 function bare(c=catalog){const b=createBuild(c);for(const s of availableSkills(b,c))if(s.type!=='spell')state(b,s.source,0);return b;}
 function synthetic(modifiers){const c=structuredClone(catalog);c.trinkets.push({id:'test-effects',canAttune:false,modifiers,attunedModifiers:modifiers});const b=bare(c);b.trinkets=[{id:'test-effects',attuned:false}];return [b,c];}
+
+test('UUID helper prefers native randomUUID and generates RFC 4122 v4 IDs without it',()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto'),crypto=globalThis.crypto,ids=new Set();
+ try{
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{randomUUID:()=> 'native-id'}});
+  assert.equal(createUuid(),'native-id');
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues:bytes=>crypto.getRandomValues(bytes)}});
+  for(let i=0;i<100;i++)ids.add(createUuid());
+  assert.equal(ids.size,100);
+  for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+ }finally{Object.defineProperty(globalThis,'crypto',descriptor);}
+});
+test('build and gear creation use fallback UUIDs when randomUUID is absent',()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto'),crypto=globalThis.crypto;
+ try{
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues:bytes=>crypto.getRandomValues(bytes)}});
+  const build=createBuild(catalog),gear=createGear(catalog,catalog.equipment[0].id);
+  assert.match(build.id,/^[0-9a-f-]{36}$/);assert.match(gear.id,/^[0-9a-f-]{36}$/);assert.notEqual(build.id,gear.id);
+ }finally{Object.defineProperty(globalThis,'crypto',descriptor);}
+});
 
 test('all catalog classes create valid independent builds with available source-path focus',()=>{
  for(const cls of catalog.classes){const b=createBuild(catalog,cls.id);assert.equal(b.specializationId,cls.id);assert.ok(cls.skills.includes(b.focusSkill));assert.ok(catalog.skills[b.focusSkill]);assert.equal(catalog.skills[b.focusSkill].type,'spell');assert.deepEqual(validatePlannerBuild(b,catalog),b);for(const profile of [cls,...cls.specializations]){b.specializationId=profile.id;assert.ok(availableSkills(b,catalog).every(s=>s.source!=='players/attacks/dash.sval'));}}

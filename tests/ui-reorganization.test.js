@@ -5,13 +5,14 @@ import vm from 'node:vm';
 import catalog from '../data/game-data.json' with {type:'json'};
 import {createBuild,collectStats,validatePlannerBuild,ATTRIBUTES} from '../planner-model.js';
 import {STAT_OVERRIDE_FIELDS} from '../combat/stat-overrides.js';
+import {createUuid} from '../uuid.js';
 
 const source=readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const func=(name,next)=>source.slice(source.indexOf(`function ${name}(`),source.indexOf(`function ${next}(`));
 function harness(build=createBuild(catalog),extra={}){
  const elements=new Map();
  const $=s=>{if(!elements.has(s))elements.set(s,{innerHTML:'',textContent:'',value:'',checked:false,hidden:false,disabled:false,close(){this.closed=true;}});return elements.get(s);};
- const context={build,catalog,library:{builds:[build],activeId:build.id},STAT_OVERRIDE_FIELDS,ATTRIBUTES,collectStats,validatePlannerBuild,$,
+  const context={build,catalog,library:{builds:[build],activeId:build.id},STAT_OVERRIDE_FIELDS,ATTRIBUTES,collectStats,validatePlannerBuild,createUuid,$,
    structuredClone,JSON,Blob,crypto:{randomUUID:()=>`copy-${Math.random()}`},esc:v=>String(v??''),fmt:v=>v===null||!Number.isFinite(v)?'—':String(Math.round(v*10)/10),option:()=>'',detailView:{capture(){}},toast(){},chooseBuild(id){context.library.activeId=id;context.build=context.library.builds.find(b=>b.id===id);},...extra};
  vm.createContext(context);return {context,$};
 }

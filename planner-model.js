@@ -7,6 +7,7 @@ import {calculateComboDamage} from './combat/combo-damage.js';
 import {weaponDefinition,equippedWeaponAttacks} from './combat/weapon-equipment.js';
 import {LEGACY_TARGET} from './combat/targets.js';
 import {validateStatOverrides} from './combat/stat-overrides.js';
+import {createUuid} from './uuid.js';
 export {STAT_OVERRIDE_FIELDS,STAT_OVERRIDE_PATHS,validateStatOverrides} from './combat/stat-overrides.js';
 
 export const ATTRIBUTES={str:'Strength',dex:'Dexterity',int:'Intelligence',foc:'Focus',vit:'Vitality'};
@@ -33,10 +34,10 @@ function skillPaths(build,catalog){const cls=findClass(catalog,build.classId),pr
 function firstDamagingPath(paths,catalog){return [...paths].find(path=>findSkill(catalog,path)?.type==='spell')||[...paths][0];}
 export function createBuild(catalog,classId='wizard'){
   const cls=findClass(catalog,classId);if(!cls)throw Error(`Unknown class: ${classId}`);
-  return {version:2,gameBuildId:catalog.buildId,id:crypto.randomUUID(),name:`New ${cls.name} build`,classId,specializationId:classId,level:20,attributes:Object.fromEntries(attributeKeys.map(a=>[a,0])),armored:false,focusSkill:firstDamagingPath(new Set(cls.skills.filter(p=>p!==DASH_PATH)),catalog),skills:{},gear:[],trinkets:[]};
+  return {version:2,gameBuildId:catalog.buildId,id:createUuid(),name:`New ${cls.name} build`,classId,specializationId:classId,level:20,attributes:Object.fromEntries(attributeKeys.map(a=>[a,0])),armored:false,focusSkill:firstDamagingPath(new Set(cls.skills.filter(p=>p!==DASH_PATH)),catalog),skills:{},gear:[],trinkets:[]};
 }
 export function availableSkills(build,catalog){return [...[...skillPaths(build,catalog)].map(path=>findSkill(catalog,path)).filter(Boolean),...equippedWeaponAttacks(build,catalog)];}
-export function createGear(catalog,baseId){const base=catalog.equipment.find(e=>e.id===baseId);if(!base)throw Error(`Unknown equipment: ${baseId}`);return {id:crypto.randomUUID(),baseId,name:base.name,equipped:true,roll:.5,affixes:[]};}
+export function createGear(catalog,baseId){const base=catalog.equipment.find(e=>e.id===baseId);if(!base)throw Error(`Unknown equipment: ${baseId}`);return {id:createUuid(),baseId,name:base.name,equipped:true,roll:.5,affixes:[]};}
 export function equipGear(build,item,catalog){
   const base=catalog.equipment.find(e=>e.id===item.baseId);if(!base)return item;
   const slot=slotKey(base.slot),hands=['mainhand','offhand','twohanded'];
