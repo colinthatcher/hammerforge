@@ -1,0 +1,20 @@
+.game-data/
+node_modules/
+vendor/
+mise.local.toml
+
+# Local credentials and deployment overrides
+.env
+.env.*
+!.env.example
+compose.override.yaml
+compose.override.yml
+
+# Private native player saves (test fixtures are generated in JavaScript)
+*.hps
+
+# Generated output and local clutter
+coverage/
+*.log
+.DS_Store
+Thumbs.db

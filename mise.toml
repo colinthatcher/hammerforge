@@ -1,0 +1,48 @@
+[tools]
+node = "24.21.0"
+
+[tasks.dev]
+description = "Serve the planner at http://localhost:5173"
+depends = ["deps"]
+run = "node scripts/serve.mjs"
+
+[tasks.deps]
+description = "Install locked dependencies and prepare local browser assets"
+run = "npm ci"
+
+[tasks.test]
+description = "Run calculation and import-validation tests"
+run = "node --test tests/*.test.js"
+
+[tasks.check]
+description = "Check JavaScript syntax"
+run = "node scripts/check.mjs"
+
+[tasks."test:ui"]
+description = "Run real mouse/keyboard regressions against mise run dev (requires optional Playwright/browser)"
+run = "node scripts/test-ui.mjs"
+
+[tasks."test:ui:storage"]
+description = "Verify browser-local database persistence (requires optional Playwright/browser)"
+run = "node scripts/test-storage-ui.mjs"
+
+[tasks.verify]
+description = "Run all checks and tests"
+depends = ["check", "test"]
+
+[tasks."test:ui:damage"]
+description = "Run focused 103/124 damage reconciliation browser regressions (requires optional Playwright/browser)"
+run = "UI_TEST_SCOPE=reconciliation node scripts/test-ui.mjs"
+
+[tasks."data:extract"]
+description = "Extract local game text resources into ignored .game-data (HOH2_GAME_DIR overrides install path)"
+run = "node scripts/extract-resources.mjs"
+
+[tasks."data:catalog"]
+description = "Rebuild the source-linked game catalog from the local installation"
+depends = ["data:extract"]
+run = "node scripts/build-catalog.mjs"
+
+[tasks."data:verify"]
+description = "Verify catalog source hashes against the installed Steam build"
+run = "node scripts/verify-catalog.mjs"

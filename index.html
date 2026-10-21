@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#202020">
+  <title>Hammerforge · Heroes of Hammerwatch II build planner</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="catalog.css">
+  <link rel="stylesheet" href="planner.css">
+  <link rel="stylesheet" href="character-import.css">
+  <link rel="stylesheet" href="combat.css">
+  <link rel="stylesheet" href="conditions.css">
+  <link rel="stylesheet" href="survival.css">
+  <link rel="stylesheet" href="pob.css">
+  <link rel="stylesheet" href="items.css">
+</head>
+<body>
+  <header class="app-titlebar">
+    <a class="brand" href="./">Hammerforge</a>
+    <span class="app-subtitle">Heroes of Hammerwatch II</span>
+    <button id="import-open">Import character / build</button>
+    <button id="export">Export build</button>
+    <button id="clipboard-copy">Copy build to clipboard</button>
+    <span class="status" id="saved" role="status">Saved locally</span>
+  </header>
+  <main>
+    <div id="planner" hidden>
+      <section class="build-toolbar" aria-label="Current build">
+        <label>Current build:<select id="build-select"></select></label>
+        <div class="toolbar-actions"><button id="new-build">New</button><button id="copy-build">Copy</button><button id="delete-build" aria-label="Delete current build">Delete</button></div>
+        <label class="build-name-field">Name:<input id="build-name" maxlength="100"></label>
+        <label class="level-field">Level:<input id="level" type="number" min="1" max="10000" step="1"></label>
+        <label>Class:<select id="class"></select></label>
+        <label>Specialization:<select id="specialization"></select></label>
+      </section>
+      <div class="layout">
+        <aside class="build-sidebar" aria-label="Build navigation and statistics">
+          <nav class="tabs" role="tablist" aria-label="Build sections">
+            <button role="tab" id="tab-character" data-tab="character" aria-controls="view-character" aria-selected="false" tabindex="-1">Character</button>
+            <button role="tab" id="tab-abilities" data-tab="abilities" aria-controls="view-abilities" aria-selected="true" tabindex="0">Skills</button>
+            <button role="tab" id="tab-gear" data-tab="gear" aria-controls="view-gear" aria-selected="false" tabindex="-1">Items <span id="gear-count"></span></button>
+            <button role="tab" id="tab-trinkets" data-tab="trinkets" aria-controls="view-trinkets" aria-selected="false" tabindex="-1">Trinkets <span id="trinket-count"></span></button>
+            <button role="tab" id="tab-game" data-tab="game" aria-controls="view-game" aria-selected="false" tabindex="-1">Upgrades</button>
+            <button role="tab" id="tab-conditions" data-tab="conditions" aria-controls="view-conditions" aria-selected="false" tabindex="-1">Configuration</button>
+            <button role="tab" id="tab-calcs" data-tab="calcs" aria-controls="view-calcs" aria-selected="false" tabindex="-1">Calcs</button>
+          </nav>
+          <label class="focus-label">Main skill:<select id="focus-skill"></select></label>
+          <div class="sidebar-stat-scroll" aria-label="Character statistics" tabindex="0">
+          <section class="panel focus-panel" id="sidebar-panel-dps" aria-label="Offence">
+            <div id="focus-output"></div>
+            <div id="sidebar-stats"></div>
+          </section>
+          <div id="hero-resources" class="hero-resources" role="group" aria-label="Resources"></div>
+          <section id="sidebar-defences" aria-label="Defence summary"></section>
+          <details class="sidebar-compare" data-disclosure="sidebar-compare"><summary>Compare build</summary><label class="compare-label">Compare with:<select id="compare-build"></select></label><div id="comparison"></div></details>
+          </div>
+          <div class="sidebar-footer">
+            <div id="sidebar-model-warnings"></div>
+            <div id="stat-override-warning" class="stat-override-warning" role="status" hidden></div>
+            <button class="sidebar-calcs-link text-button" data-go-tab="calcs" title="Damage breakdowns, model exclusions and custom incoming-hit calculations">Calculations & assumptions →</button>
+            <div class="sidebar-caption" title="Source-derived core estimates, not complete or runtime-validated game DPS.">Source-derived · partial estimates</div>
+          </div>
+        </aside>
+        <div class="workspace">
+          <section class="panel" role="tabpanel" id="view-character" aria-labelledby="tab-character" tabindex="0" hidden>
+            <div class="section-heading"><h1 id="character-name">Character</h1></div>
+            <p class="scope-note">All currently modeled derived stats, on one page. Offence uses the main skill’s attack/spell context and configured buffs. Values not modeled yet are identified below, not assumed to be zero.</p>
+            <div class="character-stat-actions"><label class="toggle-label"><input id="edit-character-stats" type="checkbox"> Edit derived stats manually</label><button id="reset-stat-overrides">Reset all manual stats</button></div>
+            <p id="character-override-note" class="scope-note">Manual values replace calculated totals and affect estimates. Clear an edited field or use Reset to return to calculation. Chances and penetration use fractions (0.25 = 25%); multipliers use 1 = 100%.</p>
+            <div id="character-stats" class="character-stats"></div>
+            <section class="calc-section"><h2>Recovery & defence assumptions</h2><p>Regeneration is effective health/mana per second, including gain modifiers. Current mana % in Configuration controls missing-mana bonuses. Health regeneration resumes after the game’s regeneration delay; recovery is not counted in maximum-hit estimates. Resistances are ratings, not percentages; negative ratings amplify damage. Movement is a flat-terrain stat multiplier, not simulated travel speed. Maximum hits cover the initial landed hit only, excluding affliction ticks, avoidance, shields and damage-taken modifiers. Fire damage over time can kill after surviving the initial hit.</p></section>
+            <details data-disclosure="allocated-attributes"><summary>Attribute allocation inputs</summary><p>Added to class base attributes; equipment and supported progression bonuses apply automatically. A manual total attribute override takes precedence.</p><div id="attributes" class="attribute-grid"></div></details>
+            <details id="character-import-details" data-disclosure="character-import" hidden><summary>Imported character details & mapping notes</summary><div id="character-import-info"></div></details>
+            <div class="editor-help"><h2>Build settings</h2><p>Class, specialization and level are edited in the build bar. Use Upgrades for town progression, masteries and combo choices; Configuration holds temporary buffs and enemy conditions.</p></div>
+          </section>
+          <section class="panel" role="tabpanel" id="view-abilities" aria-labelledby="tab-abilities" tabindex="0">
+            <div class="section-heading"><h1>Skills</h1><span class="panel-note">Select a main skill to update the sidebar and Calcs.</span></div>
+            <p class="scope-note">Partial core estimates · weapon attacks follow equipped items; class skills use their selected rank.</p>
+            <div id="ability-list"></div>
+          </section>
+          <section class="panel" role="tabpanel" id="view-gear" aria-labelledby="tab-gear" tabindex="0" hidden>
+            <div class="section-heading"><h1>Items</h1><button id="add-gear">Create item</button></div>
+            <p class="scope-note">Choose from your build’s items for each slot. Selecting an item equips it and opens its preview. Two-handed weapons occupy both hands. Create items with at most one prefix and one suffix; other generation rules are not enforced.</p>
+            <div class="items-layout"><aside class="items-browser"><section class="equipped-items"><h2>Equipped slots</h2><div id="gear-slots"></div></section></aside><section id="selected-item" class="game-tooltip" aria-live="polite" aria-label="Selected item"></section></div>
+          </section>
+          <section class="panel" role="tabpanel" id="view-trinkets" aria-labelledby="tab-trinkets" tabindex="0" hidden>
+            <div class="section-heading"><h1>Trinkets</h1><button id="add-trinket">Add trinket</button></div><div id="trinket-list"></div>
+            <p class="scope-note">Supported simple modifiers apply per copy. Conditional effects, triggered procs and sets are excluded.</p>
+          </section>
+          <section class="panel" role="tabpanel" id="view-game" aria-labelledby="tab-game" tabindex="0" hidden>
+            <div class="section-heading"><h1>Upgrades</h1></div><p class="scope-note">Permanent town progression, combo skills and run upgrades. Conflicting upgrades withhold the estimate.</p><div id="game-skills"></div>
+          </section>
+          <section class="panel combat-conditions" role="tabpanel" id="view-conditions" aria-labelledby="tab-conditions" tabindex="0" hidden>
+            <div class="section-heading"><h1>Configuration</h1><button id="clear-conditions">Reset conditions</button></div><p class="scope-note">Selected buffs and debuffs are held active. Automatic uptime, expiry and conditional procs are not simulated.</p>
+            <div class="conditions-columns"><div><div id="player-conditions"></div></div><div><h2>Enemy target & conditions</h2><div class="target-card"><label>Enemy target<select id="target-preset"><option value="generic">Generic target (legacy)</option></select></label><span id="target-details">10,000 health · no elemental resistance</span><label class="toggle-label" id="generic-armor"><input type="checkbox" id="armored"> Armored (100 physical armor)</label><p class="panel-note">For the green-robed town dummy, select Green-robed magic dummy: it has 100 elemental resistance, not physical armor.</p></div><div id="enemy-conditions"></div></div></div>
+          </section>
+          <section class="panel calculations-panel" role="tabpanel" id="view-calcs" aria-labelledby="tab-calcs" tabindex="0" hidden>
+            <div class="section-heading"><h1>Calcs: <span id="calc-skill-name"></span></h1><span class="scope-note">Source-derived · partial, not runtime-validated</span></div>
+            <div id="calc-output"></div>
+            <section id="focus-assumptions" class="calc-section"><h2>Derived stats</h2><div id="focus-stats"></div><div id="focus-notes"></div></section>
+            <section class="calc-section" aria-labelledby="incoming-hits-heading">
+              <h2 id="incoming-hits-heading">Test incoming hits</h2>
+              <p class="scope-note">Custom landed-hit scenario, not enemy data. Include enemy critical multipliers in raw damage. Values are a shared scratchpad, not saved build stats.</p>
+              <div class="hit-fields"><label>Raw damage per hit<input id="incoming-damage" type="number" min="0" max="100000000" step="1" value="100"></label><label>Starting health %<input id="starting-health" type="number" min="1" max="100" step="1" value="100"></label><label>Enemy armor penetration %<input id="incoming-penetration" type="number" min="0" max="100" step="1" value="0"></label></div>
+              <div id="survival-output" aria-live="polite"></div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </div>
+    <footer class="app-status"><span id="loading" role="status">Loading game definitions…</span><span id="data-version"></span><span>Unofficial Heroes of Hammerwatch II planner</span></footer>
+  </main>
+  <dialog id="gear-dialog"><form id="gear-form"><div class="section-heading"><h2 id="gear-title">Create equipment</h2><button type="button" class="close" data-close="gear-dialog" aria-label="Close equipment editor">×</button></div><div class="form-grid"><label>Equipment slot<select id="gear-slot"></select></label><label class="wide">Base item<select id="gear-base"></select></label><label class="wide">Item name<input id="gear-name" required maxlength="100"></label><label class="wide" id="gear-roll-control">Base roll <output id="gear-roll-label"></output><input type="range" id="gear-roll" min="0" max="100" value="50"></label></div><div id="gear-level-fields" class="form-grid spaced" hidden><label>Saved item level<input id="gear-item-level" type="number" min="1" max="10000" step="1"></label><label>Upgrade level<input id="gear-upgrade-level" type="number" min="0" max="10000" step="1"></label><p class="panel-note wide">Saved levels scale all item modifiers and may extrapolate beyond source range endpoints.</p></div><div id="gear-definition"></div><div class="subheading"><h3>Prefixes</h3><span id="gear-prefix-count"></span></div><label>Search prefixes<input id="gear-prefix-search" type="search" placeholder="Name or effect/stat…"></label><div id="gear-prefixes" class="affix-list"></div><div class="subheading"><h3>Suffixes</h3><span id="gear-suffix-count"></span></div><label>Search suffixes<input id="gear-suffix-search" type="search" placeholder="Name or effect/stat…"></label><div id="gear-suffixes" class="affix-list"></div><div class="dialog-actions"><button type="button" data-close="gear-dialog">Cancel</button><button type="submit">Save item</button></div></form></dialog>
+  <dialog id="trinket-dialog"><div class="section-heading"><h2>Select a trinket</h2><button class="close" data-close="trinket-dialog" aria-label="Close trinket picker">×</button></div><label>Search trinkets<input id="trinket-search" type="search" placeholder="Name or effect…"></label><div id="trinket-results"></div></dialog>
+  <dialog id="new-dialog"><form id="new-form"><div class="section-heading"><h2>Create a build</h2><button type="button" class="close" data-close="new-dialog" aria-label="Close new build">×</button></div><label>Class<select id="new-class"></select></label><label class="spaced">Build name<input id="new-name" required maxlength="100" placeholder="My new build"></label><div class="dialog-actions"><button type="button" data-close="new-dialog">Cancel</button><button type="submit">Create build</button></div></form></dialog>
+  <dialog id="import-dialog">
+    <div class="section-heading"><h2>Import character / build</h2><button class="close" data-close="import-dialog" aria-label="Close import">×</button></div>
+    <div class="native-import-actions"><button id="find-local-characters">Find Steam characters on this PC</button><label class="button file-picker">Choose saves folder<input id="character-folder" type="file" webkitdirectory directory multiple></label><label class="button file-picker">Choose .hps files<input id="character-files" type="file" accept=".hps" multiple></label></div>
+    <p>Automatic discovery requires <code>mise run dev</code>. Folder/file import also works on hosted copies. Saves are read only; no game file is modified or uploaded.</p>
+    <details class="save-location-help"><summary>Save locations</summary><p>Windows: <code>Steam\userdata\&lt;account&gt;\619820\remote\saves</code></p><p>Linux / Steam Deck: <code>~/.local/share/Steam/userdata/&lt;account&gt;/619820/remote/saves</code></p><p>Also check the game's local <code>save</code> directory. Return to the game menu or close it before scanning.</p><a class="button" href="https://store.steampowered.com/account/remotestorageapp/?appid=619820" target="_blank" rel="noopener noreferrer">Steam Cloud saves</a></details>
+    <p id="native-status" role="status" aria-live="polite"></p><div id="native-errors" role="alert"></div>
+    <section id="character-preview" hidden><div class="subheading"><h3>Characters found</h3><label class="toggle-label"><input id="select-all-characters" type="checkbox"> Select all</label></div><div id="character-results"></div><p>Each character becomes an independent build. Existing builds are kept. Re-selecting an imported character adds a copy.</p><div class="dialog-actions"><span id="native-selection-count"></span><button id="import-selected-characters" disabled>Import selected characters</button></div></section>
+    <details class="planner-json-import"><summary>Import a Hammerforge build (.json)</summary><p>Add a version 2 export as a separate build.</p><label class="file-label">Choose build file<input id="import-file" type="file" accept=".json,application/json"></label><p id="import-error" role="alert"></p></details>
+    <section class="clipboard-import"><h3>Import from clipboard</h3><p>Paste a copied Hammerforge build below, or read it directly from your clipboard. Import adds a separate build without replacing the current one.</p><button id="clipboard-read" type="button">Read clipboard</button><label>Build JSON<textarea id="clipboard-content" rows="5" maxlength="1048576" placeholder="Paste build JSON here…"></textarea></label><button id="clipboard-import" type="button">Import pasted build</button><p id="clipboard-error" role="alert"></p></section>
+  </dialog>
+  <dialog id="confirm-dialog"><form method="dialog"><h2>Delete this build?</h2><p id="delete-description"></p><div class="dialog-actions"><button value="cancel">Cancel</button><button value="delete" class="danger">Delete build</button></div></form></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
