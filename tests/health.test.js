@@ -33,15 +33,18 @@ test('health endpoint serves uncached version JSON, supports HEAD and rejects wr
   const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
   const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port),GIT_REVISION:'running-revision',BUILD_DATE:'2026-10-26T00:00:00Z'},stdio:['ignore','pipe','pipe']});
   const exited=once(server,'exit');
+  let startupLog='';
   try{
     await Promise.race([
-      (async()=>{for await(const chunk of server.stdout){if(chunk.toString().includes('Hammerforge:'))return;}throw Error('Server exited before listening');})(),
+      (async()=>{for await(const chunk of server.stdout){startupLog+=chunk.toString();if(startupLog.includes('Hammerforge:'))return;}throw Error('Server exited before listening');})(),
       new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('Server startup timed out')),10000);timer.unref();})
     ]);
     const url=`http://127.0.0.1:${port}`;
     const response=await fetch(url+'/health');assert.equal(response.status,200);
     assert.match(response.headers.get('content-type'),/application\/json/);assert.equal(response.headers.get('cache-control'),'no-store');
     assert.deepEqual(await response.json(),{status:'ok',name:pkg.name,version:pkg.version,gitRevision:'running-revision',buildDate:'2026-10-26T00:00:00Z'});
+    const loggedInfo=JSON.parse(startupLog.split('\n').find(line=>line.startsWith('Hammerforge version: ')).slice('Hammerforge version: '.length));
+    assert.deepEqual(loggedInfo,await (await fetch(url+'/health')).json(),'Startup logs and health must describe the same running version');
     const head=await fetch(url+'/health',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
     const post=await fetch(url+'/health',{method:'POST'});assert.equal(post.status,405);assert.equal(post.headers.get('allow'),'GET, HEAD');
     assert.equal((await fetch(url+'/')).status,200);

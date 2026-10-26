@@ -14,3 +14,4 @@
 !scripts/version.mjs
 !docker/
 !docker/default.conf
+!docker/40-log-version.sh

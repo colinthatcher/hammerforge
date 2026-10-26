@@ -11,6 +11,7 @@ RUN BUILD_DATE="${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" GIT_REVISION="${G
 FROM nginx:stable-alpine
 
 COPY docker/default.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 docker/40-log-version.sh /docker-entrypoint.d/40-log-version.sh
 COPY index.html *.js *.css /usr/share/nginx/html/
 COPY combat/ /usr/share/nginx/html/combat/
 COPY data/game-data.json /usr/share/nginx/html/data/game-data.json

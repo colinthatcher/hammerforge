@@ -14,9 +14,11 @@ import {selectAffix,affixSelectionValid,slotItems,selectSlotItem} from './item-s
 import {STAT_OVERRIDE_FIELDS,STAT_OVERRIDE_PATHS} from './combat/stat-overrides.js';
 import {openBuildStorage} from './build-storage.js';
 import {createUuid} from './uuid.js';
+import {initAppVersion} from './app-version.js';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>v===null||!Number.isFinite(v)?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(v);
+void initAppVersion();
 const statusLabel=r=>({utility:'Utility',passive:'Passive effect',unlearned:'Not learned',conflict:'Upgrade conflict','missing-equipment':'Weapon required',unsupported:'Unsupported mechanics'}[r.status]||'Core estimate');
 const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?'selected':''}>${esc(label)}</option>`;
 function characterLabel(character){

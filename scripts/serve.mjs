@@ -34,5 +34,8 @@ const server=createServer(async(req,res)=>{
   res.end(req.method==='HEAD'?undefined:body);
  }catch{res.writeHead(404);res.end('Not found');}
 });
-server.listen(port,'127.0.0.1',()=>console.log(`Hammerforge: http://localhost:${port} (Ctrl+C to stop)`));
+server.listen(port,'127.0.0.1',()=>{
+  console.log(`Hammerforge version: ${health}`);
+  console.log(`Hammerforge: http://localhost:${port} (Ctrl+C to stop)`);
+});
 server.on('error',error=>{console.error(error.message);process.exitCode=1;});

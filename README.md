@@ -32,6 +32,8 @@ The image embeds build metadata; it does not inspect a host checkout at runtime.
 
 Both the image and Compose health checks use `/health`. Check it manually with `curl http://localhost:8080/health`. The local development server exposes the same endpoint at `http://localhost:5173/health`, detects the Git revision at startup, and reports `buildDate: null` unless `BUILD_DATE` is supplied. This is a liveness endpoint, not a check of game-data or calculation accuracy.
 
+Startup logs include the same application version and full Git revision as `/health` (`docker compose logs hammerforge` for Docker). The page footer also shows the app version and shortened Git revision, separately from the Steam game-data build; hover over it for the full revision and build date. If build metadata is unavailable, the footer says so without blocking the planner.
+
 ## Checks
 
 ```sh

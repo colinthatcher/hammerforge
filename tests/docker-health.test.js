@@ -23,6 +23,14 @@ test('image and Compose healthchecks request the health endpoint', () => {
   assert.match(compose, /http:\/\/127\.0\.0\.1\/health/);
 });
 
+test('nginx startup logs the embedded health metadata', async () => {
+  const script=await readFile(new URL('../docker/40-log-version.sh',import.meta.url),'utf8');
+  assert.match(dockerfile,/COPY --chmod=755 docker\/40-log-version\.sh \/docker-entrypoint\.d\/40-log-version\.sh/);
+  assert.match(script,/Hammerforge version:/);
+  assert.match(script,/cat \/etc\/nginx\/health\.json/);
+  assert.match(dockerignore,/^!docker\/40-log-version\.sh$/m);
+});
+
 test('image builds metadata without including a host Git checkout', () => {
   assert.match(dockerfile, /COPY scripts\/version\.mjs/);
   assert.match(dockerfile, /node scripts\/version\.mjs \/app\/health\.json/);

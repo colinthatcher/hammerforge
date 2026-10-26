@@ -12,7 +12,12 @@ try{
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(process.env.UI_TEST_URL||'http://localhost:5173');
-  await page.locator('#planner').waitFor({state:'visible'});
+   await page.locator('#planner').waitFor({state:'visible'});
+   const runningVersion=await (await page.request.get(new URL('/health',page.url()).href)).json();
+   const revision=/^[a-f\d]+$/i.test(runningVersion.gitRevision)?runningVersion.gitRevision.slice(0,12):'unknown';
+   await page.waitForFunction(label=>document.querySelector('#app-version').textContent===label,`App v${runningVersion.version} · Git ${revision}`);
+   assert.match(await page.locator('#app-version').getAttribute('title'),new RegExp(revision==='unknown'?'unknown':runningVersion.gitRevision));
+   assert.match(await page.locator('#data-version').innerText(),new RegExp(catalog.buildId));
   // No dispatchEvent(), fill(), or selectOption(): edits must commit through
   // real blur/Tab/native-select events, as they do for someone using the UI.
   const type=async(selector,value)=>{await page.locator(selector).click();await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type(value);};
@@ -211,6 +216,14 @@ try{
     await p.locator('#tab-calcs').click();assert.match(await p.locator('#calc-output').innerText(),/Green-robed magic dummy.*10,000,000 health/);
     await isolated.close();
   }
-  assert.deepEqual(errors,[]);
+   // Unavailable deployment metadata must never prevent planner startup.
+   const unavailable=await browser.newContext();
+   await unavailable.route('**/health',route=>route.fulfill({status:503,body:'Unavailable'}));
+   const unavailablePage=await unavailable.newPage();unavailablePage.on('pageerror',error=>errors.push(error.message));
+   await unavailablePage.goto(process.env.UI_TEST_URL||'http://localhost:5173');
+   await unavailablePage.locator('#planner').waitFor({state:'visible'});
+   assert.equal(await unavailablePage.locator('#app-version').innerText(),'App version unavailable');
+   await unavailable.close();
+   assert.deepEqual(errors,[]);
   console.log(`${process.env.UI_TEST_SCOPE==='reconciliation'?'Damage reconciliation':'UI interaction'} regressions passed: live-reconciled 103/124 hits, native target selection, shared-target comparisons, and target persistence.`);
 }finally{await browser.close();}
