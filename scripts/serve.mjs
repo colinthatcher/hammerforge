@@ -3,15 +3,21 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve, extname, sep} from 'node:path';
 import {findLocalCharacters} from './local-import.mjs';
+import {applicationInfo} from './version.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const port=Number(process.env.PORT||5173);
 if(!Number.isInteger(port)||port<1||port>65535)throw Error('PORT must be an integer from 1 to 65535');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.wasm':'application/wasm'};
+const health=JSON.stringify(applicationInfo());
 const server=createServer(async(req,res)=>{
  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405,{'Allow':'GET, HEAD'});res.end();return;}
   try {
    const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+   if(pathname==='/health'){
+     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+     res.end(req.method==='HEAD'?undefined:health);return;
+   }
    if(pathname==='/api/local-characters'){
      const hosts=[`localhost:${port}`,`127.0.0.1:${port}`];
      const allowedOrigins=hosts.map(host=>'http://'+host);

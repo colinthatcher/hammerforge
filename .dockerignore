@@ -11,3 +11,6 @@
 !package-lock.json
 !scripts/
 !scripts/prepare-vendor.mjs
+!scripts/version.mjs
+!docker/
+!docker/default.conf
