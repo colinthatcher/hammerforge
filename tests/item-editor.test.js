@@ -72,3 +72,27 @@ test('slot change replaces incompatible draft and offers all slot bases',()=>{
   assert.equal(catalog.equipment.find(b=>b.id===context.draft.baseId).slot,'mainhand');
   assert.equal(($('#gear-base').innerHTML.match(/<option /g)||[]).length,catalog.equipment.filter(b=>b.slot==='mainhand').length);
 });
+
+test('epic effects have an independent searchable picker without displacing ordinary affixes',()=>{
+  const {context,$,render}=editor();
+  context.draft.sourceQuality=8;
+  context.draft.affixes=[{id:'mod_spell_crit_dmg',roll:.2},{id:'mod_kill_health',roll:.3},{id:'mod_epic_immunity_vulnerability',roll:.8}];
+  const before=structuredClone(context.draft);render();
+  for(const side of ['prefix','suffix','epic'])assert.equal($(`#gear-${side}-count`).textContent,'1 / 1 selected');
+  assert.match($('#gear-epics').innerHTML,/name="gear-epic"[^>]*data-affix="mod_epic_immunity_vulnerability"[^>]* checked/);
+  assert.doesNotMatch($('#gear-prefixes').innerHTML,/data-affix="mod_epic_/);
+  $('#gear-epic-search').value='silence';render();
+  assert.match($('#gear-epics').innerHTML,/<div class="affix-option" ><label[^>]*><input[^>]*data-affix="mod_epic_immunity_silence"/);
+  assert.match($('#gear-epics').innerHTML,/<div class="affix-option" ><label[^>]*><input[^>]*data-affix="mod_epic_immunity_vulnerability"/);
+  assert.deepEqual(context.draft,before);
+});
+
+test('all equipment bases expose quality choices and preserve unknown imported quality',()=>{
+  const {context,$,render}=editor();context.draft.sourceQuality=8;render();
+  assert.match($('#gear-definition').innerHTML,/Item quality<select data-item-quality>/);
+  assert.match($('#gear-definition').innerHTML,/<option value="8">Epic/);
+  assert.doesNotMatch($('#gear-definition').innerHTML,/data-weapon-variant/);
+  context.draft.sourceQuality=32;render();
+  assert.match($('#gear-definition').innerHTML,/<option value="32">Imported quality \(32\)/);
+  assert.equal(context.draft.sourceQuality,32);
+});

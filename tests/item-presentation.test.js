@@ -54,10 +54,27 @@ test('item intensity uses gear intensity including upgrades, with roll fallback'
   assert.match(presentItem({itemLevel:5,upgradeLevel:2,affixes:[]},base,catalog).stats[0],/^60 Fire damage$/);
 });
 
-test('quality thresholds and legendary source quality',()=>{
+test('quality thresholds and explicit source quality take precedence over effect count',()=>{
   assert.deepEqual([0,1,2,3].map(n=>itemQuality(n).label),['Common','Uncommon','Rare','Epic']);
   assert.equal(itemQuality(0,16).label,'Legendary');
   assert.notEqual(itemQuality(0,9).label,'Legendary');
+  for(const [quality,label] of [[1,'Common'],[2,'Uncommon'],[4,'Rare'],[8,'Epic'],[16,'Legendary'],[128,'Cursed']]){
+    assert.equal(itemQuality(0,quality).label,label);
+    assert.equal(itemQuality(3,quality).label,label);
+    assert.equal(itemQuality(0,label.toLowerCase()).label,label);
+  }
+  assert.equal(itemQuality(0,9).label,'Unknown quality (9)');
+});
+
+test('epic effects have their own presentation type and infer epic quality without saved quality',()=>{
+  const base=catalog.equipment.find(b=>b.slot==='head');
+  const item={affixes:[{id:'mod_epic_immunity_silence',roll:.5}]};
+  const result=presentItem(item,base,catalog);
+  assert.equal(result.quality.label,'Epic');assert.equal(result.quality.color,'#ff00ff');
+  assert.equal(result.affixes[0].type,'Epic effect');
+  assert.ok(result.affixes[0].stats.length);
+  assert.equal(presentItem({...item,sourceQuality:4},base,catalog).quality.label,'Rare','Explicit source quality remains authoritative');
+  assert.equal(presentItem({affixes:[],sourceQuality:8},base,catalog).quality.label,'Epic');
 });
 
 test('unresolved imported modifiers remain visible and counted',()=>{

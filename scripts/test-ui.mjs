@@ -81,7 +81,7 @@ try{
   assert.equal(await page.locator('#gear-base').evaluate(el=>el.tagName),'SELECT','Base picker remains a dropdown');
   assert.equal(await page.locator('#gear-base').getAttribute('type'),null);
   assert.equal(await page.locator('#gear-base').evaluate(el=>el.type),'select-one');
-  assert.equal(await page.locator('#gear-dialog input[type="search"]').count(),2,'Only prefix and suffix have search fields');
+   assert.equal(await page.locator('#gear-dialog input[type="search"]').count(),3,'Prefix, suffix and epic effects have independent searches');
   await type('#gear-name','Second interaction item');await page.locator('#gear-form button[type=submit]').click();
   await page.locator('#gear-dialog').waitFor({state:'hidden'});
   let items=(await stored()).gear;assert.equal(items.length,gearBefore.length+1);
@@ -117,7 +117,7 @@ try{
   assert.equal(await page.locator('#gear-prefix-search').inputValue(),'attack power','Suffix search leaves prefix query unchanged');
   // Select one prefix, replace it with another, and independently select a suffix.
   await page.locator('#gear-prefix-search').click();await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('strength');
-  const strengthRadio=page.locator('#gear-prefixes .affix-option:not([hidden]) input[data-affix-side="prefix"][data-affix]').first();
+   const strengthRadio=page.locator('#gear-prefixes .affix-option:not([hidden]) input[data-affix="mod_str"]');
   const strengthId=await strengthRadio.getAttribute('value');assert.ok(strengthId);
   await strengthRadio.click();
   await page.waitForFunction(()=>document.querySelector('#gear-prefix-count').innerText==='1 / 1 selected');
@@ -136,9 +136,37 @@ try{
   await suffix.click();
   await page.waitForFunction(()=>document.querySelector('#gear-suffix-count').innerText==='1 / 1 selected');
   assert.equal(await page.locator(`[data-affix-side="prefix"][value="${attackId}"]`).isChecked(),true,'Suffix selection leaves prefix intact');
-  assert.equal(await page.locator('#gear-suffix-count').innerText(),'1 / 1 selected');
-  await page.locator('[data-affix-side="prefix"][value=""]').click();
-  await page.locator('[data-affix-side="suffix"][value=""]').click();
+   assert.equal(await page.locator('#gear-suffix-count').innerText(),'1 / 1 selected');
+   // Epic is a third independent effect, not a replacement for the prefix.
+   await choose('[data-item-quality]',4);
+   await type('#gear-epic-search','silence');
+   await page.locator('#gear-epics input[data-affix="mod_epic_immunity_silence"]').click();
+   await page.waitForFunction(()=>document.querySelector('#gear-epic-count').innerText==='1 / 1 selected');
+   assert.equal(await page.locator('#gear-epic-count').innerText(),'1 / 1 selected');
+   assert.equal(await page.locator('#gear-prefix-count').innerText(),'1 / 1 selected');
+   assert.equal(await page.locator('#gear-suffix-count').innerText(),'1 / 1 selected');
+   await page.locator('#gear-form button[type=submit]').click();
+   await page.locator('#gear-dialog').waitFor({state:'hidden'});
+   let epic=(await stored()).gear.find(g=>g.id===second.id);
+   assert.equal(epic.sourceQuality,8);assert.equal(epic.affixes.length,3);
+   assert.match(await page.locator('#selected-item header small').innerText(),/Epic · 3 affixes/);
+   assert.equal(await page.locator('#selected-item h2').evaluate(el=>getComputedStyle(el).color),'rgb(255, 0, 255)');
+   assert.equal(await page.locator('[data-slot-item="head"]').evaluate(el=>getComputedStyle(el).color),'rgb(255, 0, 255)');
+   assert.match(await page.locator('#selected-item .item-stats').innerText(),/Epic effect/);
+   assert.match(await page.locator('#selected-item .item-stats').innerText(),/silence/i);
+   await page.reload();await page.locator('#planner').waitFor({state:'visible'});
+   await page.locator('#tab-gear').click();
+   await page.locator(`[data-select-gear="${second.id}"]`).click();
+   await page.locator('#selected-item [data-edit-gear]').click();
+   assert.equal(await page.locator('[data-item-quality]').inputValue(),'8');
+   assert.equal(await page.locator('#gear-epic-count').innerText(),'1 / 1 selected');
+   await page.locator('#gear-form button[type=submit]').click();
+   await page.locator('#gear-dialog').waitFor({state:'hidden'});
+   assert.deepEqual((await stored()).gear.find(g=>g.id===second.id).affixes,epic.affixes,'Editing an epic item preserves all three effects');
+   await page.locator('#selected-item [data-edit-gear]').click();
+   await page.locator('[data-affix-side="prefix"][value=""]').click();
+   await page.locator('[data-affix-side="suffix"][value=""]').click();
+   await page.locator('[data-affix-side="epic"][value=""]').click();
   await page.locator('#gear-form button[type=submit]').click();
   const savedSecond=(await stored()).gear.find(g=>g.id===second.id);
   assert.equal(savedSecond.affixes.length,0,'Clearing both sides saves no affixes');

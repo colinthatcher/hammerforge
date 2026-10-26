@@ -80,10 +80,18 @@ export function presentModifier(modifier,roll=.5){
   return text+condition(m)+(Number(m.timeout)>0?` · ${fmt(m.timeout/1000)}s cooldown`:'');
 }
 
-export function itemQuality(n,q){if(q==='legendary'||q===16)return {label:'Legendary',color:'#ff2400'};return [{label:'Common',color:'#fff'},{label:'Uncommon',color:'#42ff00'},{label:'Rare',color:'#00c0ff'},{label:'Epic',color:'#ff00ff'}][Math.min(3,Math.max(0,n))];}
+const qualities=[{label:'Common',color:'#fff'},{label:'Uncommon',color:'#42ff00'},{label:'Rare',color:'#00c0ff'},{label:'Epic',color:'#ff00ff'},{label:'Legendary',color:'#ff2400'},{label:'Cursed',color:'#b580ff'}];
+export function itemQuality(n,q){
+  if(q!==undefined){
+    const index=typeof q==='string'?qualities.findIndex(entry=>entry.label.toLowerCase()===q.toLowerCase()):[1,2,4,8,16,128].indexOf(q);
+    return index<0?{label:`Unknown quality (${q})`,color:'#aaa'}:qualities[index];
+  }
+  return qualities[Math.min(3,Math.max(0,n))];
+}
 export function presentItem(item,base,catalog){
   const intensity=gearIntensity(item)??.5,baseStats=(base.modifiers||[]).map(m=>presentModifier(m,intensity)),affixes=[],unresolvedStats=[];
-  for(const a of item.affixes||[]){const d=(catalog.affixes||[]).find(d=>d.id===a.id);if(!d){unresolvedStats.push(`Unresolved imported effect: ${a.id} (effect not identified)`);continue;}affixes.push({id:d.id,name:d.name||d.prefix||d.suffix||'Affix',type:d.prefix?'Prefix':d.suffix?'Suffix':'Affix',stats:(d.modifiers||[]).map(m=>presentModifier(m,item.itemLevel===undefined?a.roll??.5:intensity))});}
+  for(const a of item.affixes||[]){const d=(catalog.affixes||[]).find(d=>d.id===a.id);if(!d){unresolvedStats.push(`Unresolved imported effect: ${a.id} (effect not identified)`);continue;}affixes.push({id:d.id,name:d.name||d.prefix||d.suffix||'Affix',type:d.quality==='epic'?'Epic effect':d.prefix?'Prefix':d.suffix?'Suffix':'Affix',stats:(d.modifiers||[]).map(m=>presentModifier(m,item.itemLevel===undefined?a.roll??.5:intensity))});}
   for(const id of item.unresolvedModifiers||[])unresolvedStats.push(`Unresolved imported effect: ${id} (effect not identified)`);
-  return {quality:itemQuality((item.affixes?.length||0)+(item.unresolvedModifiers?.length||0),item.sourceQuality),baseStats,affixes,unresolvedStats,stats:[...baseStats,...affixes.flatMap(a=>a.stats),...unresolvedStats]};
+  const inferredQuality=affixes.some(a=>a.type==='Epic effect')?'epic':undefined;
+  return {quality:itemQuality((item.affixes?.length||0)+(item.unresolvedModifiers?.length||0),item.sourceQuality??inferredQuality),baseStats,affixes,unresolvedStats,stats:[...baseStats,...affixes.flatMap(a=>a.stats),...unresolvedStats]};
 }

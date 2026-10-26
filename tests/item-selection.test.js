@@ -37,6 +37,23 @@ test('manual affix guard only counts explicit known side metadata',()=>{
   assert.equal(affixSelectionValid(item,catalog),true);
 });
 
+test('epic effects coexist with prefix and suffix and replace only other epic effects',()=>{
+  const head=catalog.equipment.find(b=>b.slot==='head');
+  const item={sourceQuality:8,affixes:[{id:'mod_spell_crit_dmg',roll:.2},{id:'mod_kill_health',roll:.3},{id:'mod_epic_immunity_vulnerability',roll:.8},{id:'unknown',roll:.4}],unresolvedModifiers:['0x1234']};
+  assert.equal(affixSelectionValid(item,catalog),true);
+  assert.equal(selectAffix(item,'prefix','mod_epic_immunity_silence',catalog,head),false);
+  assert.equal(selectAffix(item,'epic','mod_str',catalog,head),false);
+  assert.equal(selectAffix(item,'epic','mod_epic_immunity_silence',catalog,head),true);
+  assert.deepEqual(item.affixes.map(a=>a.id),['mod_spell_crit_dmg','mod_kill_health','unknown','mod_epic_immunity_silence']);
+  selectAffix(item,'prefix','',catalog,head);
+  assert.ok(item.affixes.some(a=>a.id==='mod_epic_immunity_silence'));
+  item.affixes.push({id:'mod_epic_immunity_vulnerability',roll:.8});
+  assert.equal(affixSelectionValid(item,catalog),false);
+  selectAffix(item,'epic','',catalog,head);
+  assert.equal(affixSelectionValid(item,catalog),true);
+  assert.deepEqual(item.unresolvedModifiers,['0x1234']);assert.equal(item.sourceQuality,8);
+});
+
 test('slot selection swaps equipment and handles two-handed occupancy and empty slots',()=>{
   const build=createBuild(catalog);
   const main=createGear(catalog,'mainhand_mace_01'),off=createGear(catalog,'offhand_shield_01'),two=createGear(catalog,'twohanded_greataxe_02'),head=createGear(catalog,'head_str_t1a');

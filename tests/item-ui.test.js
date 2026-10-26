@@ -15,10 +15,26 @@ test('item inspector markup groups base stats and named typed affix stats',()=>{
   const presented=presentItem(item,base,catalog);
   assert.ok(Array.isArray(presented.baseStats));assert.equal(presented.affixes[0].name,definition.name);
   assert.ok(['Prefix','Suffix','Affix'].includes(presented.affixes[0].type));assert.ok(presented.affixes[0].stats.length);
-  assert.match(source,/<h3>Base stats<\/h3>/);assert.match(source,/\['Prefix','Suffix','Affix'\]/);
+  assert.match(source,/<h3>Base stats<\/h3>/);assert.match(source,/\['Prefix','Suffix','Affix','Epic effect'\]/);
   assert.match(source,/itemDisplayName\(g,catalog\)/);assert.match(source,/aria-label="Inspect \$\{esc\(itemDisplayName\(item,catalog\)\)\}"/);
   assert.match(source,/esc\(itemDisplayName\(selected,catalog\)\)/);
   assert.match(source,/No \$\{side\.toLowerCase\(\)\}/);assert.match(source,/a\.name/);assert.match(source,/a\.type/);
+});
+
+test('every catalog epic effect renders in the inspector with Epic color and readable stats',()=>{
+  for(const definition of catalog.affixes.filter(a=>a.quality==='epic')){
+    const base=catalog.equipment.find(b=>b.tags.some(tag=>definition.tags.includes(tag)));
+    const item={...createGear(catalog,base.id),sourceQuality:8,equipped:false,affixes:[{id:definition.id,roll:.5}]};
+    const tooltip={innerHTML:''},before=structuredClone(item);
+    const context={selected:item,catalog,presentItem,itemDisplayName,SLOT_LABELS,$:()=>tooltip,esc:v=>String(v)};
+    vm.createContext(context);
+    vm.runInContext(source.slice(source.indexOf("const tooltip=$('#selected-item')"),source.indexOf("$('#trinket-list')")),context);
+    assert.match(tooltip.innerHTML,/#ff00ff/);assert.match(tooltip.innerHTML,/Epic · 1 affixes/);
+    assert.match(tooltip.innerHTML,/<h3>Epic effect<\/h3>/);
+    assert.ok(tooltip.innerHTML.includes(definition.name));
+    for(const stat of presentItem(item,base,catalog).affixes[0].stats)assert.ok(tooltip.innerHTML.includes(stat),definition.id);
+    assert.deepEqual(item,before);
+  }
 });
 
 test('slot dropdowns contain only fitting build items without an inventory list',()=>{

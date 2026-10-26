@@ -2,12 +2,13 @@ import {equipGear} from './planner-model.js';
 
 const definition = (catalog,id) => catalog?.affixes?.find(entry=>entry.id===id);
 
+const sideOf = def => def?.quality==='epic'?'epic':def?.prefix?'prefix':def?.suffix?'suffix':null;
 export function selectAffix(item,side,id,catalog,base){
-  if(!item||!['prefix','suffix'].includes(side)||typeof id!=='string'||!Array.isArray(item.affixes))return false;
+  if(!item||!['prefix','suffix','epic'].includes(side)||typeof id!=='string'||!Array.isArray(item.affixes))return false;
   const selected=id===''?undefined:definition(catalog,id);
-  if(id!==''&&(!selected||!selected[side]||!(selected.tags||[]).some(tag=>(base?.tags||[]).includes(tag))))return false;
+  if(id!==''&&(!selected||sideOf(selected)!==side||!(selected.tags||[]).some(tag=>(base?.tags||[]).includes(tag))))return false;
   const existing=item.affixes.find(affix=>affix.id===id);
-  const retained=item.affixes.filter(affix=>!definition(catalog,affix.id)?.[side]);
+  const retained=item.affixes.filter(affix=>sideOf(definition(catalog,affix.id))!==side);
   if(selected){
     retained.push({id,roll:existing?.roll??.5});
   }
@@ -16,9 +17,9 @@ export function selectAffix(item,side,id,catalog,base){
 }
 
 export function affixSelectionValid(item,catalog){
-  const counts={prefix:0,suffix:0};
-  for(const affix of item?.affixes||[]){const def=definition(catalog,affix.id);for(const side of Object.keys(counts))if(def?.[side])counts[side]++;}
-  return counts.prefix<=1&&counts.suffix<=1;
+  const counts={prefix:0,suffix:0,epic:0};
+  for(const affix of item?.affixes||[]){const side=sideOf(definition(catalog,affix.id));if(side)counts[side]++;}
+  return Object.values(counts).every(count=>count<=1);
 }
 
 export function slotItems(build,catalog,slot){
